@@ -6,7 +6,6 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.health.connect.datatypes.ExerciseRoute;
 import android.location.Location;
 import android.os.Bundle;
 import android.view.WindowManager;
@@ -15,11 +14,11 @@ import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -31,7 +30,7 @@ import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMapLongClickListener {
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMapLongClickListener{
     SupportMapFragment supportMapFragment;
     FusedLocationProviderClient fusedLocationProviderClient;
     EditText txtLatitud, txtLongitud;
@@ -45,9 +44,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-        fusedLocationProviderClient = (FusedLocationProviderClient) LocationServices.getFusedLocationProviderClient(this);
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
-        Dexter.withContext(getApplicationContext()).withPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+        Dexter.withContext(getApplicationContext())
+                .withPermission(Manifest.permission.ACCESS_FINE_LOCATION)
                 .withListener(new PermissionListener() {
                     @Override
                     public void onPermissionGranted(PermissionGrantedResponse permissionGrantedResponse) {
@@ -63,20 +63,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     public void onPermissionRationaleShouldBeShown(PermissionRequest permissionRequest, PermissionToken permissionToken) {
                         permissionToken.continuePermissionRequest();
                     }
-                }).check();
 
-        txtLatitud = findViewById(R.id.txtLatitud);
+                }).check();
     }
 
     public void getCurrentLocation() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return;
         }
         Task<Location> task = fusedLocationProviderClient.getLastLocation();
@@ -86,15 +78,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 supportMapFragment.getMapAsync(new OnMapReadyCallback() {
                     @Override
                     public void onMapReady(@NonNull GoogleMap googleMap) {
-                        if (location != null){
-                            LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
+                        mMap = googleMap;
+
+                        if (location != null) {
+                            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
                             MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("Aqui se encuentra");
-                            googleMap.addMarker(markerOptions);
-                            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng,15));
-                        }
-                        else {
+                            mMap.addMarker(markerOptions);
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
+                        } else {
                             Toast.makeText(MainActivity.this, "Por favor, active su ubicación para utilizar la aplicación", Toast.LENGTH_SHORT).show();
                         }
+
+                        mMap.setOnMapClickListener(MainActivity.this);
+                        mMap.setOnMapLongClickListener(MainActivity.this);
+
+                        LatLng guadalajara = new LatLng(40.635479, -3.174281);
+                        mMap.moveCamera(CameraUpdateFactory.newLatLng(guadalajara));
+
+                        LatLng g1 = new LatLng(40.64390338991715, -3.142959697317834);
+                        mMap.addMarker(new MarkerOptions().position(g1));
+
+                        LatLng g2 = new LatLng(40.63366404469122, -3.1702702570533714);
+                        mMap.addMarker(new MarkerOptions().position(g2));
+
+                        LatLng g3 = new LatLng(40.63280456713761, -3.1828241483232027);
+                        mMap.addMarker(new MarkerOptions().position(g3));
+
+                        LatLng g4 = new LatLng(40.63579518051684, -3.189177109407755);
+                        mMap.addMarker(new MarkerOptions().position(g4));
                     }
                 });
             }
@@ -102,24 +113,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onMapReady(@NonNull GoogleMap googleMap) {
-        mMap = googleMap;
-        this.mMap.setOnMapClickListener(this);
-        this.mMap.setOnMapLongClickListener(this);
-
-        LatLng guadalajara = new LatLng(40.635479, -3.174281);
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(guadalajara));
-    }
-
-    @Override
     public void onMapClick(@NonNull LatLng latLng) {
-        txtLatitud.setText("" + latLng.latitude);
-        txtLongitud.setText("" + latLng.longitude);
+        if (txtLatitud != null && txtLongitud != null) {
+            txtLatitud.setText(String.valueOf(latLng.latitude));
+            txtLongitud.setText(String.valueOf(latLng.longitude));
+        }
     }
 
     @Override
     public void onMapLongClick(@NonNull LatLng latLng) {
-        txtLatitud.setText("" + latLng.latitude);
-        txtLongitud.setText("" + latLng.longitude);
+        if (txtLatitud != null && txtLongitud != null) {
+            txtLatitud.setText(String.valueOf(latLng.latitude));
+            txtLongitud.setText(String.valueOf(latLng.longitude));
+        }
+    }
+
+    @Override
+    public void onMapReady(@NonNull GoogleMap googleMap) {
     }
 }
