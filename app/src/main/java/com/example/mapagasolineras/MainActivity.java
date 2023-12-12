@@ -26,6 +26,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -158,8 +159,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         if (location != null) {
                             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                            MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("Aqui se encuentra");
+                            MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("Aqui se encuentra").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
                             mMap.addMarker(markerOptions);
+
                             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
                         } else {
                             Toast.makeText(MainActivity.this, "Por favor, active su ubicación para utilizar la aplicación", Toast.LENGTH_SHORT).show();
