@@ -9,11 +9,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -31,12 +27,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-import com.karumi.dexter.Dexter;
-import com.karumi.dexter.PermissionToken;
-import com.karumi.dexter.listener.PermissionDeniedResponse;
-import com.karumi.dexter.listener.PermissionGrantedResponse;
-import com.karumi.dexter.listener.PermissionRequest;
-import com.karumi.dexter.listener.single.PermissionListener;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -46,14 +36,11 @@ import com.android.volley.RequestQueue;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMapLongClickListener {
 
-    private TextView mTextViewResult;
     private RequestQueue mQueue;
 
     SupportMapFragment supportMapFragment;
     FusedLocationProviderClient fusedLocationProviderClient;
-    EditText txtLatitud, txtLongitud;
     GoogleMap mMap;
-    String n = "19";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,40 +52,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
-        Dexter.withContext(getApplicationContext())
-                .withPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                .withListener(new PermissionListener() {
-                    @Override
-                    public void onPermissionGranted(PermissionGrantedResponse permissionGrantedResponse) {
-                        getCurrentLocation();
-                    }
-
-                    @Override
-                    public void onPermissionDenied(PermissionDeniedResponse permissionDeniedResponse) {
-
-                    }
-
-                    @Override
-                    public void onPermissionRationaleShouldBeShown(PermissionRequest permissionRequest, PermissionToken permissionToken) {
-                        permissionToken.continuePermissionRequest();
-                    }
-
-                }).check();
-
-
-        mTextViewResult = findViewById(R.id.text_view_result);
-        Button buttonParse = findViewById(R.id.button_parse);
-
         mQueue = Volley.newRequestQueue(this);
 
-        buttonParse.setOnClickListener(new View.OnClickListener() {
+        // Llama directamente al método getCurrentLocation() al inicio de la actividad
+        getCurrentLocation();
+    }
+
+    public void getCurrentLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        Task<Location> task = fusedLocationProviderClient.getLastLocation();
+        task.addOnSuccessListener(new OnSuccessListener<Location>() {
             @Override
-            public void onClick(View v) {
-                jsonParse();
+            public void onSuccess(Location location) {
+                supportMapFragment.getMapAsync(new OnMapReadyCallback() {
+                    @Override
+                    public void onMapReady(@NonNull GoogleMap googleMap) {
+                        mMap = googleMap;
+
+                        if (location != null) {
+                            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                            MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("Aqui se encuentra").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                            mMap.addMarker(markerOptions);
+
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
+
+                            // Realiza la solicitud y parseo del JSON aquí
+                            jsonParse();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Por favor, active su ubicación para utilizar la aplicación", Toast.LENGTH_SHORT).show();
+                        }
+
+                        mMap.setOnMapClickListener(MainActivity.this);
+                        mMap.setOnMapLongClickListener(MainActivity.this);
+
+                        LatLng ubicacion = new LatLng(location.getLatitude(), location.getLongitude());
+                        mMap.moveCamera(CameraUpdateFactory.newLatLng(ubicacion));
+                    }
+                });
             }
         });
-
-
     }
 
     private void jsonParse() {
@@ -113,17 +108,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     for(int i = 0; i < jsonArray.length(); i++){
                         JSONObject gasolinera = jsonArray.getJSONObject(i);
 
-                        String latitudStr = gasolinera.getString("Latitud");
-                        String longitudStr = gasolinera.getString("Longitud (WGS84)");
+                        String latitudStr = gasolinera.getString("Latitud").replace(",", ".");
+                        String longitudStr = gasolinera.getString("Longitud (WGS84)").replace(",", ".");
+                        String rotulo = gasolinera.getString("Rótulo");
+                        String cpostal = gasolinera.getString("C.P.");
+                        String direccion = gasolinera.getString("Dirección");
 
                         try {
+                            LatLng g1 = new LatLng(Double.parseDouble(latitudStr), Double.parseDouble(longitudStr));
+                            mMap.addMarker(new MarkerOptions().position(g1).title(rotulo).snippet(cpostal + ", " + direccion));
 
-                            mTextViewResult.append((latitudStr + " " + longitudStr + " "));
-                            double latitud = Double.parseDouble(latitudStr);
-                            double longitud = Double.parseDouble(longitudStr);
-
-                            LatLng gasolineraLatLng = new LatLng(latitud, longitud);
-                            mMap.addMarker(new MarkerOptions().position(gasolineraLatLng));
                         } catch (NumberFormatException e) {
                             Log.e("GasolineraParsing", "Error parsing coordinates: " + e.getMessage());
                         }
@@ -143,62 +137,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mQueue.add(request);
     }
 
-
-    public void getCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        Task<Location> task = fusedLocationProviderClient.getLastLocation();
-        task.addOnSuccessListener(new OnSuccessListener<Location>() {
-            @Override
-            public void onSuccess(Location location) {
-                supportMapFragment.getMapAsync(new OnMapReadyCallback() {
-                    @Override
-                    public void onMapReady(@NonNull GoogleMap googleMap) {
-                        mMap = googleMap;
-
-                        if (location != null) {
-                            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                            MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("Aqui se encuentra").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
-                            mMap.addMarker(markerOptions);
-
-                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
-                        } else {
-                            Toast.makeText(MainActivity.this, "Por favor, active su ubicación para utilizar la aplicación", Toast.LENGTH_SHORT).show();
-                        }
-
-                        mMap.setOnMapClickListener(MainActivity.this);
-                        mMap.setOnMapLongClickListener(MainActivity.this);
-
-                        LatLng guadalajara = new LatLng(40.635479, -3.174281);
-                        mMap.moveCamera(CameraUpdateFactory.newLatLng(guadalajara));
-
-
-                    }
-                });
-            }
-        });
-    }
-
     @Override
     public void onMapClick(@NonNull LatLng latLng) {
-        if (txtLatitud != null && txtLongitud != null) {
-            txtLatitud.setText(String.valueOf(latLng.latitude));
-            txtLongitud.setText(String.valueOf(latLng.longitude));
-        }
+        // Manejo de clics en el mapa si es necesario
     }
 
     @Override
     public void onMapLongClick(@NonNull LatLng latLng) {
-        if (txtLatitud != null && txtLongitud != null) {
-            txtLatitud.setText(String.valueOf(latLng.latitude));
-            txtLongitud.setText(String.valueOf(latLng.longitude));
-        }
+        // Manejo de clics largos en el mapa si es necesario
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
+        // No es necesario implementar código aquí
     }
-
-
 }
