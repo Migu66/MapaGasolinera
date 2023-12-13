@@ -5,7 +5,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,6 +26,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -74,7 +79,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         if (location != null) {
                             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-                            MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("Aqui se encuentra").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                            MarkerOptions markerOptions = new MarkerOptions().position(latLng).title("Aqui se encuentra").icon(setIcon(MainActivity.this,R.drawable.ic_ubicacion_foreground));
                             mMap.addMarker(markerOptions);
 
                             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
@@ -116,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         try {
                             LatLng g1 = new LatLng(Double.parseDouble(latitudStr), Double.parseDouble(longitudStr));
-                            mMap.addMarker(new MarkerOptions().position(g1).title(rotulo).snippet(cpostal + ", " + direccion));
+                            mMap.addMarker(new MarkerOptions().position(g1).title(rotulo).snippet(cpostal + ", " + direccion).icon(setIcon(MainActivity.this,R.drawable.ic_gasoplus_foreground)));
 
                         } catch (NumberFormatException e) {
                             Log.e("GasolineraParsing", "Error parsing coordinates: " + e.getMessage());
@@ -150,5 +155,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         // No es necesario implementar código aquí
+    }
+    public BitmapDescriptor setIcon(Activity context, int drawableID){
+        Drawable drawable = ActivityCompat.getDrawable(context, drawableID);
+        drawable.setBounds(0,0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        drawable.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 }
